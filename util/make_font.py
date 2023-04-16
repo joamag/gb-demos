@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 from PIL import Image
 
@@ -21,5 +22,4 @@ if __name__ == '__main__':
         else:
             s += '/* 0x{:02X} */\n'.format(c)
     s += '};\n#endif\n\n'
-    print(s)        
-
+    print(s)
