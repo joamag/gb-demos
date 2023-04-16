@@ -1,6 +1,6 @@
-# Game Boy Demos
+# Game Boy Demos 😎
 
-Random set of demo ROMs for the Game Boy.
+Random set of demo ROMs for the Game Boy 🕹️.
 
 ## License
 
