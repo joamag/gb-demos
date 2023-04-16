@@ -160,13 +160,15 @@ INT8 print() {
         tmp1 = pix;
         for(col = 0; col < 20; col++) {
             tmp2 = &FONT[text[line][col]<<4]; // times 16 as each char is 16 bytes
-            for(i = 0; i < 16; i++)
+            for(i = 0; i < 16; i++) {
                 *tmp1++ = *tmp2++;
+            }
         }
         for(col = 0; col < 20; col++) {
             tmp2 = &FONT[text[line + 1][col] << 4]; // times 16 as each char is 16 bytes
-            for(i = 0; i < 16; i++)
+            for(i = 0; i < 16; i++) {
                 *tmp1++ = *tmp2++;
+            }
         }
 
         if(printer_data(640, pix) != 0x08) { // TODO: this should (could?) return 0?
@@ -175,23 +177,28 @@ INT8 print() {
     }
 
     // ask status, expect 0x08 status (ready to print)
-    if(printer_cmd(PRINTER_STATUS) != 0x08)
+    if(printer_cmd(PRINTER_STATUS) != 0x08) {
         return -3;
+    }
 
     // send "EOF", status should be still 0x08
-    if(printer_data(0, (UINT8*) 0) != 0x08)
+    if(printer_data(0, (UINT8*) 0) != 0x08) {
         return -4;
+    }
 
     // send start print command, status should be still 0x08
-    if(printer_cmd(PRINTER_PRINT) != 0x08)
+    if(printer_cmd(PRINTER_PRINT) != 0x08) {
         return -5;
+    }
 
     // keep checking until status changes from 0x06 (printing)
     while(printer_cmd(PRINTER_STATUS) == 0x06);
 
     // check if status is 0x04 (printing done)
-    if(printer_cmd(PRINTER_STATUS) != 0x00) // TODO: this should (could?) return 0x04?
+    // TODO: this should (could?) return 0x04?
+    if(printer_cmd(PRINTER_STATUS) != 0x00)  {
         return -6;
+    }
 
     return 0;
 }
