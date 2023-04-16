@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include <gb/gb.h>
 #include <gb/drawing.h>
@@ -35,6 +36,11 @@ static const UINT8 PRINTER_PRINT[] = {
     0x3E, 0x01  // checksum
 };
 
+void print_message(char *message) {
+    wait_vbl_done();
+    set_bkg_tiles(0, 13, strlen(message), 1, message);
+}
+
 UINT8 serial_send_recv(UINT8 b) {
     SB_REG = b;
     SC_REG = 0x81;
@@ -50,8 +56,9 @@ UINT8 printer_cmd(UINT8* cmd) {
         serial_send_recv(*cmd++);
 
     // alive indicator
-    if((serial_send_recv(0) & 0xF0) != 0x80)
-        return 0xFF;
+    if((serial_send_recv(0) & 0xF0) != 0x80) {
+        return 0xff;
+    }
 
     // status
     return serial_send_recv(0);
@@ -143,6 +150,8 @@ INT8 get_lines_count() {
 }
 
 INT8 print() {
+    print_message("COPY1...");
+
     UINT8 line, col, lines, i;
     UINT8 pix[640], *tmp1;
     const UINT8* tmp2;
@@ -175,6 +184,8 @@ INT8 print() {
         }
     }
 
+    print_message("COPY...");
+
     // ask status, expect 0x08 status (ready to print)
     if(printer_cmd(PRINTER_STATUS) != 0x08) {
         return -3;
@@ -204,7 +215,7 @@ INT8 print() {
 
 void main(void) {
     UINT8 counter = 0;
-    char label[4];
+    char label[32];
 
     UINT8 keys;
 
@@ -227,11 +238,6 @@ void main(void) {
     enable_interrupts();
 
     clear(); 
-
-    // waits for the V-Blank interrupt and
-    // then displays "LOD" on the screen
-    wait_vbl_done();
-    set_bkg_tiles(0, 14, 3, 1, "LOD");
 
     // iterates continuously until a key is pressed
     // this is a naive approach of waiting for a key press
@@ -303,19 +309,22 @@ void main(void) {
             else
                 set_bkg_tiles(4, 14, 12, 4, (char*) KEYB_LOWER);
         } else if(keys & J_START) {
-            wait_vbl_done();
-            set_bkg_tiles(0, 13, 8, 1, "PRINTING");
+            print_message("PRINTING...");
 
             // START = print
+            // @TODO the main issue is HERE with the disable of
+            // the interrupts
             disable_interrupts();
-            if(print() != 0) {
-                wait_vbl_done();
-                set_bkg_tiles(0, 14, 3, 1, "ERR");
+            
+            INT8 print_result = print();
+            if(print_result != 0) {
+                sprintf(label, "ERROR: %d", print_result);
+                print_message(label);
             } else {
-                wait_vbl_done();
-                set_bkg_tiles(0, 14, 3, 1, "   ");
+                print_message("PRINTED!");
                 clear();
             }
+
             enable_interrupts();
         }
 
