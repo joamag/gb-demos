@@ -3,7 +3,7 @@
 #include <gb/gb.h>
 #include <gb/drawing.h>
 
-#include "../common/font.h"
+#include "../../common/font.h"
 
 static const UINT8 PRINTER_INIT[] = {
     8,          // length
@@ -144,7 +144,6 @@ INT8 get_lines_count() {
 
 INT8 print() {
     UINT8 line, col, lines, i;
-    UINT8 status;
     UINT8 pix[640], *tmp1;
     const UINT8* tmp2;
 
