@@ -81,9 +81,6 @@ UINT8 printer_cmd(UINT8* cmd) {
     // alive indicator
     UINT8 result = serial_send_recv(0);
     if((result & 0xf0) != 0x80) {
-        char message[32];
-        sprintf(message, "ALIVE ERROR %d", result);
-        print_message(message);
         return 0xff;
     }
 
