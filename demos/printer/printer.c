@@ -88,8 +88,9 @@ UINT8 printer_data(UINT16 len, UINT8* data) {
     serial_send_recv((UINT8) (chksum >> 8));
 
     // keepalive
-    if((serial_send_recv(0) & 0xF0) != 0x80)
+    if((serial_send_recv(0) & 0xF0) != 0x80) {
         return 0x60;
+    }
 
     // status
     return serial_send_recv(0);
@@ -114,7 +115,7 @@ static const char KEYB_LOWER[4][12] = {
 static UINT8 keyb_is_upper = 1;
 
 // position of selection cursor on screen in pixels
-// visible screen starts at (40, 128) 
+// visible screen starts at (40, 128)
 static UINT8 cursor_x = 40, cursor_y = 128;
 
 static const UINT8 CURSORS[32] = {
@@ -131,7 +132,7 @@ void clear(void) {
     text_x = 0;
     text_y = 0;
 
-    wait_vbl_done(); 
+    wait_vbl_done();
     set_bkg_tiles(0, 0, 20, 14, (char*) text);
     move_sprite(1, 8, 16);
 }
@@ -237,7 +238,7 @@ void main(void) {
     DISPLAY_ON;
     enable_interrupts();
 
-    clear(); 
+    clear();
 
     // iterates continuously until a key is pressed
     // this is a naive approach of waiting for a key press
@@ -246,7 +247,7 @@ void main(void) {
         counter++;
         sprintf(label, "LOD%d", counter % 10);
 
-        keys = waitpad(J_A | J_B | J_START | J_SELECT 
+        keys = waitpad(J_A | J_B | J_START | J_SELECT
             | J_UP | J_DOWN | J_LEFT | J_RIGHT);
         waitpadup();
 
@@ -270,12 +271,12 @@ void main(void) {
                     c = KEYB_UPPER[(cursor_y - 128) >> 3][(cursor_x - 40) >> 3];
                 else
                     c = KEYB_LOWER[(cursor_y - 128) >> 3][(cursor_x - 40) >> 3];
-                
+
                 if(c != '\n') {
                     text[text_y][text_x] = c;
                     wait_vbl_done();
                     set_bkg_tiles(text_x, text_y, 1, 1, &c);
-                
+
                     if(text_x == 19) {
                         text_x = 0;
                         text_y++;;
@@ -315,7 +316,7 @@ void main(void) {
             // @TODO the main issue is HERE with the disable of
             // the interrupts
             disable_interrupts();
-            
+
             INT8 print_result = print();
             if(print_result != 0) {
                 sprintf(label, "ERROR: %d", print_result);
