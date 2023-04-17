@@ -6,38 +6,49 @@
 
 #include "../../common/font.h"
 
+#define MAGIC_1 0x88
+#define MAGIC_2 0x33
+
+#define NO_COMPRESSION 0x00
+
 static const UINT8 PRINTER_INIT[] = {
-    8,          // length
-    0x88, 0x33, // magic
-    0x01,       // command
-    0x00,       // compression
-    0x00, 0x00, // data length
-                // no data
-    0x01, 0x00  // checksum
+    8,                // length
+    MAGIC_1, MAGIC_2, // magic
+    0x01,             // command
+    NO_COMPRESSION,   // compression
+    0x00, 0x00,       // data length
+                      // no data
+    0x01, 0x00        // checksum
 };
 
 static const UINT8 PRINTER_STATUS[] = {
-    8,          // length
-    0x88, 0x33, // magic
-    0x0F,       // command
-    0x00,       // compression
-    0x00, 0x00, // data length
-                // no data
-    0x0F, 0x00  // checksum
+    8,                // length
+    MAGIC_1, MAGIC_2, // magic
+    0x0f,             // command
+    NO_COMPRESSION,   // compression
+    0x00, 0x00,       // data length
+                      // no data
+    0x0f, 0x00        // checksum
 };
 
 static const UINT8 PRINTER_PRINT[] = {
-    12,         // length
-    0x88, 0x33, // magic
-    0x02,       // command
-    0x00,       // compression
-    0x04, 0x00, // data length
-    0x01, 0x13, 0xE4, 0x40, // margins, palette, exposure
-    0x3E, 0x01  // checksum
+    12,               // length
+    MAGIC_1, MAGIC_2, // magic
+    0x02,             // command
+    NO_COMPRESSION,   // compression
+    0x04, 0x00,       // data length
+    0x01, 0x13, 0xe4, 0x40, // margins, palette, exposure
+    0x3e, 0x01        // checksum
 };
+
+void clear_message() {
+    wait_vbl_done();
+    set_bkg_tiles(0, 13, 20, 1, "                    ");
+}
 
 void print_message(char *message) {
     wait_vbl_done();
+    clear_message();
     set_bkg_tiles(0, 13, strlen(message), 1, message);
 }
 
@@ -45,18 +56,24 @@ UINT8 serial_send_recv(UINT8 b) {
     SB_REG = b;
     SC_REG = 0x81;
     while(SC_REG & 0x80);
+    // @TODO: print log of send and receive
     return SB_REG;
 }
 
 // returns status code
 UINT8 printer_cmd(UINT8* cmd) {
     UINT8 len = *cmd++;
-    // received bytes should be 0x00, no point in checking them
-    while(len--)
+
+    while(len--) {
         serial_send_recv(*cmd++);
+    }
 
     // alive indicator
-    if((serial_send_recv(0) & 0xF0) != 0x80) {
+    UINT8 result = serial_send_recv(0);
+    if((result & 0xf0) != 0x80) {
+        char message[32];
+        sprintf(message, "ALIVE ERROR %d", result);
+        print_message(message);
         return 0xff;
     }
 
@@ -126,9 +143,11 @@ static const UINT8 CURSORS[32] = {
 };
 
 void clear(void) {
-    for(text_y = 0; text_y < 14; text_y++)
-        for(text_x = 0; text_x < 20; text_x++)
+    for(text_y = 0; text_y < 14; text_y++) {
+        for(text_x = 0; text_x < 20; text_x++) {
             text[text_y][text_x] = ' ';
+        }
+    }
     text_x = 0;
     text_y = 0;
 
@@ -184,8 +203,6 @@ INT8 print() {
             return -2;
         }
     }
-
-    print_message("COPY...");
 
     // ask status, expect 0x08 status (ready to print)
     if(printer_cmd(PRINTER_STATUS) != 0x08) {
@@ -315,18 +332,18 @@ void main(void) {
             // START = print
             // @TODO the main issue is HERE with the disable of
             // the interrupts
-            disable_interrupts();
+            //disable_interrupts();
 
             INT8 print_result = print();
             if(print_result != 0) {
-                sprintf(label, "ERROR: %d", print_result);
-                print_message(label);
+                //sprintf(label, "ERROR: %d", print_result);
+                //print_message(label);
             } else {
                 print_message("PRINTED!");
                 clear();
             }
 
-            enable_interrupts();
+            //enable_interrupts();
         }
 
         waitpadup();
