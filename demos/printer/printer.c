@@ -11,10 +11,15 @@
 
 #define NO_COMPRESSION 0x00
 
+#define INIT_CMD 0x01
+#define PRINT_CMD 0x02
+#define DATA_CMD 0x04
+#define STATUS_CMD 0x0f
+
 static const UINT8 PRINTER_INIT[] = {
     8,                // length
     MAGIC_1, MAGIC_2, // magic
-    0x01,             // command
+    INIT_CMD,         // command
     NO_COMPRESSION,   // compression
     0x00, 0x00,       // data length
                       // no data
@@ -24,7 +29,7 @@ static const UINT8 PRINTER_INIT[] = {
 static const UINT8 PRINTER_STATUS[] = {
     8,                // length
     MAGIC_1, MAGIC_2, // magic
-    0x0f,             // command
+    STATUS_CMD,       // command
     NO_COMPRESSION,   // compression
     0x00, 0x00,       // data length
                       // no data
@@ -34,7 +39,7 @@ static const UINT8 PRINTER_STATUS[] = {
 static const UINT8 PRINTER_PRINT[] = {
     12,               // length
     MAGIC_1, MAGIC_2, // magic
-    0x02,             // command
+    PRINT_CMD,        // command
     NO_COMPRESSION,   // compression
     0x04, 0x00,       // data length
     0x01, 0x13, 0xe4, 0x40, // margins, palette, exposure
@@ -53,14 +58,19 @@ void print_message(char *message) {
 }
 
 UINT8 serial_send_recv(UINT8 b) {
+    // sets the byte to send and starts the transfer
+    // by setting the SC register with the start bit
     SB_REG = b;
     SC_REG = 0x81;
+
+    // waits for the transfer to complete by checking
+    // the 7th bit of SC (transferring)
     while(SC_REG & 0x80);
-    // @TODO: print log of send and receive
+
+    // returns the received byte (from SB register)
     return SB_REG;
 }
 
-// returns status code
 UINT8 printer_cmd(UINT8* cmd) {
     UINT8 len = *cmd++;
 
@@ -84,10 +94,10 @@ UINT8 printer_cmd(UINT8* cmd) {
 UINT8 printer_data(UINT16 len, UINT8* data) {
     UINT16 chksum = 0x04;
 
-    serial_send_recv(0x88); // magic
-    serial_send_recv(0x33);
-    serial_send_recv(0x04); // command
-    serial_send_recv(0x00); // compression
+    serial_send_recv(MAGIC_1);
+    serial_send_recv(MAGIC_2);
+    serial_send_recv(DATA_CMD);
+    serial_send_recv(NO_COMPRESSION);
 
     // data length
     serial_send_recv((UINT8) len);
@@ -148,6 +158,7 @@ void clear(void) {
             text[text_y][text_x] = ' ';
         }
     }
+
     text_x = 0;
     text_y = 0;
 
@@ -170,7 +181,7 @@ INT8 get_lines_count() {
 }
 
 INT8 print() {
-    print_message("COPY1...");
+    print_message("PRINTING");
 
     UINT8 line, col, lines, i;
     UINT8 pix[640], *tmp1;
@@ -282,6 +293,7 @@ void main(void) {
             move_sprite(0, cursor_x, cursor_y);
         } else if(keys & J_A) {
             // A = put letter
+            clear_message();
             if(text_x < 20 && text_y < 14) {
                 // get key under cursor
                 if(keyb_is_upper)
@@ -307,6 +319,7 @@ void main(void) {
             }
         } else if(keys & J_B) {
             // B = backspace
+            clear_message();
             if(text_x > 0)
                 text_x--;
             else if(text_x == 0 && text_y > 0) {
@@ -327,25 +340,15 @@ void main(void) {
             else
                 set_bkg_tiles(4, 14, 12, 4, (char*) KEYB_LOWER);
         } else if(keys & J_START) {
-            print_message("PRINTING...");
-
             // START = print
-            // @TODO the main issue is HERE with the disable of
-            // the interrupts
-            //disable_interrupts();
-
             INT8 print_result = print();
             if(print_result != 0) {
-                //sprintf(label, "ERROR: %d", print_result);
-                //print_message(label);
+                sprintf(label, "ERROR: %d", print_result);
+                print_message(label);
             } else {
-                print_message("PRINTED!");
                 clear();
+                print_message("PRINTED!");
             }
-
-            //enable_interrupts();
         }
-
-        waitpadup();
     }
 }
